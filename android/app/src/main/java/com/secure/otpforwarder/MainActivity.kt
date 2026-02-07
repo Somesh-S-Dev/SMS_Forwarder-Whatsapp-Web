@@ -38,6 +38,9 @@ class MainActivity : AppCompatActivity() {
         binding.tvUserName.text = "Hi, ${authManager.getUserName()}"
         binding.tvUserPhone.text = maskPhoneNumber(authManager.getWhatsappNumber())
 
+        binding.tvClassifierStatus.text = "• Smart Classification: Active"
+        binding.tvClassifierStatus.setTextColor(ContextCompat.getColor(this, R.color.success_green))
+        
         binding.switchService.isChecked = authManager.isServiceEnabled()
         binding.switchService.setOnCheckedChangeListener { _, isChecked ->
             authManager.setServiceEnabled(isChecked)

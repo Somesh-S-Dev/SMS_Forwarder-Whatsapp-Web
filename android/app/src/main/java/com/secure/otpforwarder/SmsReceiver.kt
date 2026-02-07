@@ -23,9 +23,7 @@ class SmsReceiver : BroadcastReceiver() {
     
     companion object {
         private const val TAG = "SmsReceiver"
-        
-        // OTP regex: 4-8 consecutive digits
-        private val OTP_REGEX = Regex("\\b\\d{4,8}\\b")
+        private val classifier = MessageClassifier()
     }
     
     override fun onReceive(context: Context, intent: Intent) {
@@ -55,19 +53,32 @@ class SmsReceiver : BroadcastReceiver() {
             return
         }
         
-        for (smsMessage in messages) {
-            processSmsMessage(context, smsMessage, config)
+        // Handle potential multi-part SMS reassembly within this intent
+        processConsolidatedMessages(context, messages, config, authManager)
+    }
+    
+    private fun processConsolidatedMessages(
+        context: Context,
+        messages: Array<SmsMessage>,
+        config: ConfigManager,
+        authManager: AuthManager
+    ) {
+        val sender = messages[0].displayOriginatingAddress ?: "UNKNOWN"
+        val fullBody = StringBuilder()
+        for (msg in messages) {
+            msg.messageBody?.let { fullBody.append(it) }
         }
+        
+        processSmsMessage(context, sender, fullBody.toString(), config, authManager)
     }
     
     private fun processSmsMessage(
         context: Context,
-        smsMessage: SmsMessage,
-        config: ConfigManager
+        sender: String,
+        messageBody: String,
+        config: ConfigManager,
+        authManager: AuthManager
     ) {
-        val sender = smsMessage.displayOriginatingAddress ?: "UNKNOWN"
-        val messageBody = smsMessage.messageBody ?: return
-        
         // Security check 1: Sender allowlist
         if (!config.isSenderAllowed(sender)) {
             Log.d(TAG, "Sender not in allowlist: $sender")
@@ -80,13 +91,16 @@ class SmsReceiver : BroadcastReceiver() {
             return
         }
         
-        // Extract OTP
-        val otp = extractOTP(messageBody)
-        if (otp == null) {
-            Log.d(TAG, "No OTP found in message")
+        // Local Classification
+        val classification = classifier.classify(messageBody)
+        Log.d(TAG, "Classified message as ${classification.type} (Confidence: ${classification.confidence})")
+
+        // Check if this type is enabled in settings
+        if (!isTypeEnabled(classification.type, config)) {
+            Log.d(TAG, "Message type ${classification.type} is disabled in settings, ignoring")
             return
         }
-        
+
         // Forward message (async)
         Log.i(TAG, "Message detected from $sender, forwarding...")
         
@@ -95,23 +109,24 @@ class SmsReceiver : BroadcastReceiver() {
                 // In Phase 7/8, we use a more generic MessageForwardingService
                 // and determine message type
                 val forwardingService = MessageForwardingService(context)
-                forwardingService.forwardMessage(otp, sender, "OTP")
+                forwardingService.forwardMessage(
+                    content = messageBody,
+                    sender = sender,
+                    messageType = classification.type.name
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to forward message: ${e.message}")
             }
         }
     }
     
-    /**
-     * Extract OTP from SMS message body.
-     * 
-     * @param messageBody The SMS text
-     * @return OTP string if found, null otherwise
-     * 
-     * Security: Uses regex to find 4-8 digit sequences
-     */
-    private fun extractOTP(messageBody: String): String? {
-        val match = OTP_REGEX.find(messageBody)
-        return match?.value
+    private fun isTypeEnabled(type: MessageType, config: ConfigManager): Boolean {
+        return when (type) {
+            MessageType.OTP -> config.forwardOtp
+            MessageType.TRANSACTION -> config.forwardTransaction
+            MessageType.BILL -> config.forwardBill
+            MessageType.SECURITY_ALERT -> config.forwardSecurity
+            MessageType.UNKNOWN -> false // Don't forward unknown/unclassified to save resources
+        }
     }
 }
