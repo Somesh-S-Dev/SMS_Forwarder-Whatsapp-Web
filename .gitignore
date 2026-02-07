@@ -1,0 +1,61 @@
+# Ignore Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Ignore environment files
+.env
+.env.local
+.env.*.local
+
+# Ignore IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore Android
+*.iml
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.ap_
+*.aab
+
+# Ignore signing keys
+*.jks
+*.keystore
+keystore.properties
+
+# Ignore logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore Cloudflare credentials
+.cloudflared/
+*.json
+
+# Ignore Redis dumps
+dump.rdb
+
+# Ignore test coverage
+.coverage
+htmlcov/

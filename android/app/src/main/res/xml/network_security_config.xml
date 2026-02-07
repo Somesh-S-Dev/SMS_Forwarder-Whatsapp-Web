@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 
+        Security configuration to enforce HTTPS only.
+        No cleartext (HTTP) traffic is allowed.
+    -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Trust system certificate authorities -->
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- 
+        Optional: Certificate pinning for additional security
+        Uncomment and configure if you want to pin your backend's certificate
+    -->
+    <!--
+    <domain-config>
+        <domain includeSubdomains="true">your-backend-domain.com</domain>
+        <pin-set expiration="2027-01-01">
+            <pin digest="SHA-256">base64_encoded_certificate_hash</pin>
+        </pin-set>
+    </domain-config>
+    -->
+</network-security-config>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dataExtractionRules>
+    <cloud-backup disableIfNoEncryptionCapabilities="true">
+        <exclude domain="sharedpref" path="secure_otp_config.xml"/>
+    </cloud-backup>
+</dataExtractionRules>
