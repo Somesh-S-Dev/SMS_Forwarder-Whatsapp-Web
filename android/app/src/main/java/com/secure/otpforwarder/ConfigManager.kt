@@ -9,6 +9,8 @@ import androidx.security.crypto.MasterKey
  * 
  * Security: All sensitive data is encrypted at rest using Android Security Crypto.
  */
+enum class AiMode { LITE, FULL }
+
 class ConfigManager(context: Context) {
     
     private val masterKey = MasterKey.Builder(context)
@@ -70,6 +72,36 @@ class ConfigManager(context: Context) {
         get() = sharedPreferences.getBoolean(KEY_MANUAL_OVERRIDE, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_MANUAL_OVERRIDE, value).apply()
     
+    // AI and Language Settings
+    var aiMode: AiMode
+        get() = AiMode.valueOf(sharedPreferences.getString(KEY_AI_MODE, AiMode.LITE.name) ?: AiMode.LITE.name)
+        set(value) = sharedPreferences.edit().putString(KEY_AI_MODE, value.name).apply()
+
+    var preferredLanguage: String
+        get() = sharedPreferences.getString(KEY_PREFERRED_LANGUAGE, "en") ?: "en"
+        set(value) = sharedPreferences.edit().putString(KEY_PREFERRED_LANGUAGE, value).apply()
+
+    var translationEnabled: Boolean
+        get() = sharedPreferences.getBoolean(KEY_TRANSLATION_ENABLED, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_TRANSLATION_ENABLED, value).apply()
+
+    // Message Type Toggles
+    var forwardOtp: Boolean
+        get() = sharedPreferences.getBoolean(KEY_FORWARD_OTP, true)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_FORWARD_OTP, value).apply()
+
+    var forwardTransaction: Boolean
+        get() = sharedPreferences.getBoolean(KEY_FORWARD_TRANSACTION, true)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_FORWARD_TRANSACTION, value).apply()
+
+    var forwardBill: Boolean
+        get() = sharedPreferences.getBoolean(KEY_FORWARD_BILL, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_FORWARD_BILL, value).apply()
+
+    var forwardSecurity: Boolean
+        get() = sharedPreferences.getBoolean(KEY_FORWARD_SECURITY, true)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_FORWARD_SECURITY, value).apply()
+
     // Last forwarded OTP timestamp (for UI display)
     var lastForwardedTimestamp: Long
         get() = sharedPreferences.getLong(KEY_LAST_FORWARDED, 0L)
@@ -119,5 +151,12 @@ class ConfigManager(context: Context) {
         private const val KEY_OFFICE_END_HOUR = "office_end_hour"
         private const val KEY_MANUAL_OVERRIDE = "manual_override"
         private const val KEY_LAST_FORWARDED = "last_forwarded"
+        private const val KEY_AI_MODE = "ai_mode"
+        private const val KEY_PREFERRED_LANGUAGE = "preferred_language"
+        private const val KEY_TRANSLATION_ENABLED = "translation_enabled"
+        private const val KEY_FORWARD_OTP = "forward_otp"
+        private const val KEY_FORWARD_TRANSACTION = "forward_transaction"
+        private const val KEY_FORWARD_BILL = "forward_bill"
+        private const val KEY_FORWARD_SECURITY = "forward_security"
     }
 }

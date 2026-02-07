@@ -5,14 +5,17 @@ Automatically forward OTPs from your Android phone to WhatsApp with end-to-end e
 ## ⚡ Features
 
 - **🔒 End-to-End Encryption**: AES-256-GCM encryption with HMAC authentication
-- **📱 Automatic OTP Detection**: Extracts 4-8 digit OTPs from SMS
-- **✅ Sender Allowlist**: Only forward OTPs from trusted senders
+- **📱 Smart Message Classification**: Automatically detects OTPs, Transactions, Bills, and Security Alerts
+- **👤 Secure Onboarding**: WhatsApp-based OTP verification for new users
+- **🔐 PIN Security**: 4-6 digit PIN required to access the app and manage services
+- **📡 Service Management**: Enable/disable forwarding instantly from the dashboard
+- **✅ Sender Allowlist**: Only forward messages from trusted senders
 - **⏰ Office Hours Control**: Restrict forwarding to specific hours
 - **🔓 Manual Override**: Bypass office hours when needed
-- **🚫 No OTP Logging**: OTPs never stored or logged anywhere
+- **🚫 No Sensitive Data Logging**: OTPs, amounts, and account details never stored or logged
 - **🔐 HTTPS Only**: All communication encrypted in transit
-- **⚡ TTL Storage**: OTPs auto-expire after 5 minutes
-- **📊 WhatsApp Business API**: Official API, no personal WhatsApp automation
+- **⚡ TTL-Based Ephemeral Storage**: Messages auto-expire using configurable TTLs (5-15 mins)
+- **📊 WhatsApp Business API**: Official API with multiple templates for different categories
 
 ## 🏗️ Architecture
 
@@ -64,9 +67,12 @@ Automatically forward OTPs from your Android phone to WhatsApp with end-to-end e
 
 ### Access Control
 
-- **Sender Allowlist**: Whitelist trusted SMS senders
-- **Office Hours**: Time-based access control
-- **Rate Limiting**: 10 requests/minute
+- **👤 User Verification**: WhatsApp OTP verification during signup
+- **🔐 App PIN**: Mandatory PIN entry for app access
+- **📡 Service Toggle**: Master switch to stop all processing
+- **✅ Sender Allowlist**: Whitelist trusted SMS senders
+- **⏰ Office Hours**: Time-based access control
+- **Rate Limiting**: 10 requests/minute (configurable)
 - **Timestamp Validation**: Prevents replay attacks (5-minute window)
 
 ## 📋 Prerequisites
@@ -141,10 +147,11 @@ adb install app/build/outputs/apk/release/app-release.apk
 **Configure in app:**
 
 1. Enter backend URL (HTTPS)
-2. Enter AES and HMAC keys (same as backend)
-3. Add allowed senders (optional)
-4. Configure office hours
-5. Grant SMS permission
+2. Complete signup with Name and WhatsApp number
+3. Verify WhatsApp number via OTP
+4. Set up a secure PIN
+5. Configure message filters (OTP, Transactions, etc.)
+6. Grant SMS permission
 
 ## 📖 Documentation
 
@@ -164,10 +171,16 @@ adb install app/build/outputs/apk/release/app-release.apk
 | `WHATSAPP_API_TOKEN`        | WhatsApp Business API token                  | ✅       |
 | `WHATSAPP_PHONE_NUMBER_ID`  | Phone number ID from Meta                    | ✅       |
 | `WHATSAPP_RECIPIENT_NUMBER` | Your personal WhatsApp number                | ✅       |
-| `WHATSAPP_TEMPLATE_NAME`    | Template name (default:`otp_notification`) | ❌       |
-| `REDIS_URL`                 | Redis connection URL                         | ❌       |
-| `API_RATE_LIMIT`            | Rate limit (default:`10/minute`)           | ❌       |
-| `OTP_TTL_SECONDS`           | OTP expiration (default:`300`)             | ❌       |
+| `WHATSAPP_TEMPLATE_OTP`         | Template for OTP messages                    | ✅       |
+| `WHATSAPP_TEMPLATE_TRANSACTION` | Template for Bank Transactions               | ✅       |
+| `WHATSAPP_TEMPLATE_BILL`        | Template for Bill confirmations              | ✅       |
+| `WHATSAPP_TEMPLATE_SECURITY`    | Template for Security Alerts                 | ✅       |
+| `REDIS_URL`                     | Redis connection URL                         | ❌       |
+| `API_RATE_LIMIT`                | Rate limit (default:`10/minute`)             | ❌       |
+| `TTL_OTP`                       | OTP expiration (default:`300`)               | ❌       |
+| `TTL_TRANSACTION`               | Transaction expiration (default:`600`)       | ❌       |
+| `TTL_BILL`                      | Bill expiration (default:`900`)              | ❌       |
+| `TTL_SECURITY`                  | Security alert expiration (default:`600`)    | ❌       |
 
 ### Android Configuration
 

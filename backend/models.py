@@ -68,3 +68,28 @@ class HealthResponse(BaseModel):
     status: str
     redis_connected: bool
     whatsapp_api_configured: bool
+
+
+class VerificationRequest(BaseModel):
+    """Request model for sending verification OTP."""
+    whatsapp_number: str = Field(..., min_length=10, max_length=20)
+
+
+class OtpVerifyRequest(BaseModel):
+    """Request model for verifying OTP."""
+    whatsapp_number: str = Field(..., min_length=10, max_length=20)
+    otp: str = Field(..., min_length=6, max_length=6)
+
+
+class UserRegistrationRequest(BaseModel):
+    """Request model for user registration."""
+    name: str = Field(..., min_length=1, max_length=100)
+    whatsapp_number: str = Field(..., min_length=10, max_length=20)
+    verification_token: str = Field(..., min_length=32)
+
+
+class StatusResponse(BaseModel):
+    """Generic status response."""
+    success: bool
+    message: str
+    token: Optional[str] = None

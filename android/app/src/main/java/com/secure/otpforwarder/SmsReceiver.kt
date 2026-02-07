@@ -35,7 +35,14 @@ class SmsReceiver : BroadcastReceiver() {
         
         // Load configuration
         val config = ConfigManager(context)
+        val authManager = AuthManager(context)
         
+        // Check if service is enabled and user is registered
+        if (!authManager.isServiceEnabled() || !authManager.isUserRegistered()) {
+            Log.d(TAG, "Service disabled or user not registered, ignoring SMS")
+            return
+        }
+
         // Check if app is configured
         if (!config.isConfigured()) {
             Log.w(TAG, "App not configured, ignoring SMS")
@@ -80,15 +87,17 @@ class SmsReceiver : BroadcastReceiver() {
             return
         }
         
-        // Forward OTP (async)
-        Log.i(TAG, "OTP detected from $sender, forwarding...")
+        // Forward message (async)
+        Log.i(TAG, "Message detected from $sender, forwarding...")
         
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val forwardingService = OtpForwardingService(context)
-                forwardingService.forwardOTP(otp, sender)
+                // In Phase 7/8, we use a more generic MessageForwardingService
+                // and determine message type
+                val forwardingService = MessageForwardingService(context)
+                forwardingService.forwardMessage(otp, sender, "OTP")
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to forward OTP: ${e.message}")
+                Log.e(TAG, "Failed to forward message: ${e.message}")
             }
         }
     }

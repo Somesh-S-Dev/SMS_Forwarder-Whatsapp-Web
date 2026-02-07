@@ -129,6 +129,49 @@ class StorageService:
         }
         return ttl_map.get(message_type, settings.ttl_otp)
     
+    async def store_verification_otp(self, whatsapp_number: str, otp: str) -> None:
+        """
+        Store verification OTP with 10-minute TTL.
+        """
+        key = f"verify:{whatsapp_number}"
+        ttl = 600  # 10 minutes
+        
+        if self.redis:
+            await self.redis.setex(key, ttl, otp)
+        else:
+            self.memory_store[key] = {
+                "otp": otp,
+                "expires_at": time.time() + ttl
+            }
+            self._cleanup_expired()
+
+    async def get_verification_otp(self, whatsapp_number: str) -> Optional[str]:
+        """
+        Retrieve stored verification OTP.
+        """
+        key = f"verify:{whatsapp_number}"
+        
+        if self.redis:
+            return await self.redis.get(key)
+        else:
+            if key in self.memory_store:
+                data = self.memory_store[key]
+                if time.time() < data["expires_at"]:
+                    return data["otp"]
+                else:
+                    del self.memory_store[key]
+            return None
+
+    async def delete_verification_otp(self, whatsapp_number: str) -> None:
+        """
+        Delete verification OTP after use.
+        """
+        key = f"verify:{whatsapp_number}"
+        if self.redis:
+            await self.redis.delete(key)
+        else:
+            self.memory_store.pop(key, None)
+
     def _cleanup_expired(self) -> None:
         """
         Remove expired entries from in-memory storage.

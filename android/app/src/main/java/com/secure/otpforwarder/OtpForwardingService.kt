@@ -10,19 +10,12 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 /**
- * Service for forwarding OTPs to backend via HTTPS.
- * 
- * Security features:
- * - HTTPS only (enforced by network security config)
- * - AES-256-GCM encryption
- * - HMAC signature
- * - No OTP logging
- * - Timeout protection
+ * Service for forwarding sensitive messages to backend via HTTPS.
  */
-class OtpForwardingService(context: Context) {
+class MessageForwardingService(context: Context) {
     
     companion object {
-        private const val TAG = "OtpForwardingService"
+        private const val TAG = "MessageForwardingService"
         private const val TIMEOUT_SECONDS = 10L
     }
     
@@ -38,33 +31,40 @@ class OtpForwardingService(context: Context) {
     private val gson = Gson()
     
     /**
-     * Forward OTP to backend.
-     * 
-     * @param otp The OTP value
-     * @param sender The SMS sender
-     * @throws Exception if forwarding fails
-     * 
-     * Security: OTP is encrypted before transmission, never logged
+     * Forward message to backend.
      */
-    suspend fun forwardOTP(otp: String, sender: String) {
-        // Encrypt OTP and generate HMAC
-        val (encryptedPayload, hmacSignature) = cryptoManager.encryptAndSign(otp)
+    suspend fun forwardMessage(
+        content: String, 
+        sender: String, 
+        messageType: String = "UNKNOWN",
+        category: String? = null,
+        summary: String? = null,
+        language: String? = "en"
+    ) {
+        // Encrypt content and generate HMAC
+        val (encryptedPayload, hmacSignature) = cryptoManager.encryptAndSign(content)
         
         // Create request payload
         val timestamp = System.currentTimeMillis() / 1000
-        val requestData = mapOf(
+        val requestData = mutableMapOf<String, Any>(
             "encrypted_payload" to encryptedPayload,
             "hmac_signature" to hmacSignature,
             "sender" to sender,
+            "message_type" to messageType,
             "timestamp" to timestamp
         )
+        
+        // Add optional AI metadata
+        category?.let { requestData["category"] = it }
+        summary?.let { requestData["summary"] = it }
+        language?.let { requestData["language"] = it }
         
         val jsonPayload = gson.toJson(requestData)
         val requestBody = jsonPayload.toRequestBody("application/json".toMediaType())
         
-        // Build request
+        // Build request - use the new forward-message endpoint
         val request = Request.Builder()
-            .url("${config.backendUrl}/forward-otp")
+            .url("${config.backendUrl}/forward-message")
             .post(requestBody)
             .build()
         
@@ -73,7 +73,7 @@ class OtpForwardingService(context: Context) {
             val response = httpClient.newCall(request).execute()
             
             if (response.isSuccessful) {
-                Log.i(TAG, "✅ OTP forwarded successfully")
+                Log.i(TAG, "✅ Message forwarded successfully")
                 config.lastForwardedTimestamp = System.currentTimeMillis()
             } else {
                 val errorBody = response.body?.string() ?: "Unknown error"

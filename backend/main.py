@@ -18,8 +18,19 @@ from slowapi.errors import RateLimitExceeded
 import logging
 import time
 import hashlib
+import secrets
+import random
 
-from models import EncryptedMessageRequest, ForwardResponse, HealthResponse, MessageType
+from models import (
+    EncryptedMessageRequest, 
+    ForwardResponse, 
+    HealthResponse, 
+    MessageType,
+    VerificationRequest,
+    OtpVerifyRequest,
+    UserRegistrationRequest,
+    StatusResponse
+)
 from crypto_service import crypto_service
 from storage_service import storage_service
 from whatsapp_service import whatsapp_service
@@ -72,6 +83,88 @@ async def health_check():
         redis_connected=redis_healthy,
         whatsapp_api_configured=whatsapp_healthy
     )
+
+
+@app.post("/send-verification-otp", response_model=StatusResponse)
+@limiter.limit("5/minute")
+async def send_verification_otp(request: VerificationRequest):
+    """
+    Send verification OTP to WhatsApp number.
+    
+    Used for signup and number changes.
+    """
+    # Generate 6-digit OTP
+    otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    
+    # Store in temporary storage (10 min TTL)
+    await storage_service.store_verification_otp(request.whatsapp_number, otp)
+    
+    # Send via WhatsApp (using the OTP template or a general one)
+    # For now, we use a custom message if possible, or the OTP template
+    # Here we simulate sending a verification message
+    # In production, you'd have a specific template for 'verification_code'
+    success = await whatsapp_service.send_message(
+        message_content=f"Your SMS Forwarder verification code is: {otp}",
+        sender="System",
+        message_type=MessageType.OTP
+    )
+    
+    if not success:
+        logger.error(f"❌ Failed to send verification OTP to {request.whatsapp_number}")
+        return StatusResponse(success=False, message="Failed to send OTP via WhatsApp")
+    
+    logger.info(f"✅ Verification OTP sent to {request.whatsapp_number}")
+    return StatusResponse(success=True, message="Verification OTP sent")
+
+
+@app.post("/verify-otp", response_model=StatusResponse)
+@limiter.limit("10/minute")
+async def verify_otp(request: OtpVerifyRequest):
+    """
+    Verify the OTP sent to WhatsApp.
+    """
+    stored_otp = await storage_service.get_verification_otp(request.whatsapp_number)
+    
+    if not stored_otp:
+        return StatusResponse(success=False, message="OTP expired or not found")
+    
+    if stored_otp == request.otp:
+        # Generate a temporary verification token (32 chars)
+        token = secrets.token_hex(16)
+        # Store token with short TTL (e.g., 5 mins) to allow registration
+        await storage_service.store_verification_otp(f"token:{token}", request.whatsapp_number)
+        
+        # Delete OTP after successful verification
+        await storage_service.delete_verification_otp(request.whatsapp_number)
+        
+        logger.info(f"✅ OTP verified for {request.whatsapp_number}")
+        return StatusResponse(success=True, message="OTP verified", token=token)
+    else:
+        logger.warning(f"⚠️  Invalid OTP attempt for {request.whatsapp_number}")
+        return StatusResponse(success=False, message="Invalid OTP")
+
+
+@app.post("/register-user", response_model=StatusResponse)
+@limiter.limit("5/minute")
+async def register_user(request: UserRegistrationRequest):
+    """
+    Register user profile after OTP verification.
+    """
+    # Verify the registration token
+    stored_number = await storage_service.get_verification_otp(f"token:{request.verification_token}")
+    
+    if not stored_number or stored_number != request.whatsapp_number:
+        return StatusResponse(success=False, message="Invalid or expired registration token")
+    
+    # In a real app, you'd save this to a database
+    # For now, we just acknowledge the registration
+    # Since we want a stateless backend for now, we just return success
+    logger.info(f"👤 User registered: {request.name} ({request.whatsapp_number})")
+    
+    # Cleanup token
+    await storage_service.delete_verification_otp(f"token:{request.verification_token}")
+    
+    return StatusResponse(success=True, message="User registered successfully")
 
 
 @app.post("/forward-message", response_model=ForwardResponse)
